@@ -16,7 +16,7 @@
 
 ```
 python image_test.py --target_img_path data/xxx.png --source_img_path data/xxx.png --output_dir results --use_gpu True
-
+python image_test_multi_face.py --target_img_path data/dest/ --source_img_path data/src --output_dir results --use_gpu True
 python video_test.py --target_video_path data/xxx.mp4 --source_img_path data/xxx.png --output_dir results --use_gpu True
 ```
 

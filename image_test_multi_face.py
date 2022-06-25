@@ -49,41 +49,56 @@ def image_test_multi_face(args, source_aligned_images, target_aligned_images):
 
     #target_path = args.target_img_path.replace('.png', '').replace('.jpg', '').replace('.jpeg', '')
 
-    start_idx = args.target_img_path.rfind('/')
-    if start_idx > 0:
-        target_name = args.target_img_path[args.target_img_path.rfind('/'):]
-    else:
-        target_name = args.target_img_path
-    origin_att_img = cv2.imread(args.target_img_path)
+
     #id_emb, id_feature = get_id_emb(id_net, base_path + '_aligned.png')
 
+    '''
+        if start_idx > 0:
+            target_name = args.target_img_path[args.target_img_path.rfind('/'):]
+        else:
+            target_name = args.target_img_path
+    '''
 
-    for idx, target_aligned_image in enumerate(target_aligned_images):
-        id_emb, id_feature = get_id_emb_from_image(id_net, source_aligned_images[idx % len(source_aligned_images)][0])
-        faceswap_model.set_model_param(id_emb, id_feature, model_weight=weight)
-        faceswap_model.eval()
-        #print(target_aligned_image.shape)
+    if os.path.isfile(args.target_img_path):
+        img_list = [args.target_img_path]
+    else:
+        img_list = [os.path.join(args.target_img_path, x) for x in os.listdir(args.target_img_path) if
+                    x.endswith('png') or x.endswith('jpg') or x.endswith('jpeg')]
 
-        att_img = cv2paddle(target_aligned_image[0])
-        #import time
-        #start = time.perf_counter()
+    for idx1, img in enumerate(img_list):
+        target_img_path = img_list[idx1]
+        origin_att_img = cv2.imread(target_img_path)
+        target_name = target_img_path[target_img_path.rfind('/'):]
+        for idx2, target_aligned_image in enumerate(target_aligned_images[idx1]):
 
-        res, mask = faceswap_model(att_img)
-        #print('process time :{}', time.perf_counter() - start)
-        res = paddle2cv(res)
 
-        #dest[landmarks[idx][0]:landmarks[idx][1],:] =
 
-        back_matrix = target_aligned_images[idx % len(target_aligned_images)][1]
-        mask = np.transpose(mask[0].numpy(), (1, 2, 0))
-        origin_att_img = dealign(res, origin_att_img, back_matrix, mask)
-        '''
-        if args.merge_result:
-            back_matrix = np.load(base_path + '_back.npy')
+            id_emb, id_feature = get_id_emb_from_image(id_net,
+                                                       source_aligned_images[0][idx2 % len(source_aligned_images[0])][0])
+            faceswap_model.set_model_param(id_emb, id_feature, model_weight=weight)
+            faceswap_model.eval()
+            # print(target_aligned_image.shape)
+
+            att_img = cv2paddle(target_aligned_image[0])
+            # import time
+            # start = time.perf_counter()
+
+            res, mask = faceswap_model(att_img)
+            # print('process time :{}', time.perf_counter() - start)
+            res = paddle2cv(res)
+
+            # dest[landmarks[idx][0]:landmarks[idx][1],:] =
+
+            back_matrix = target_aligned_image[1]
             mask = np.transpose(mask[0].numpy(), (1, 2, 0))
-            res = dealign(res, origin_att_img, back_matrix, mask)
-            '''
-    cv2.imwrite(os.path.join(args.output_dir, os.path.basename(target_name.format(idx))), origin_att_img)
+            origin_att_img = dealign(res, origin_att_img, back_matrix, mask)
+        save_file_name = os.path.join(args.output_dir, os.path.basename(target_name.format(idx1)))
+        cv2.imwrite(save_file_name, origin_att_img)
+        print('{}/{}'.format(idx1 + 1, len(img_list)))
+
+
+    print('Done.')
+
 
 
 def face_align(landmarkModel, image_path, merge_result=False, image_size=224):
@@ -109,12 +124,14 @@ def faces_align(landmarkModel, image_path, image_size=224):
     else:
         img_list = [os.path.join(image_path, x) for x in os.listdir(image_path) if x.endswith('png') or x.endswith('jpg') or x.endswith('jpeg')]
     for path in img_list:
+        aligned_faces = []
         img = cv2.imread(path)
         landmarks = landmarkModel.gets(img)
         for landmark in landmarks:
             if landmark is not None:
                 aligned_img, back_matrix = align_img(img, landmark, image_size)
-                aligned_imgs.append([aligned_img, back_matrix])
+                aligned_faces.append([aligned_img, back_matrix])
+        aligned_imgs.append(aligned_faces)
     return aligned_imgs
 
 
